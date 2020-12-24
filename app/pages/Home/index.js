@@ -62,22 +62,18 @@ thisPageSpecs.required = {
         ThisPage.initOnFirstLoad().then(
             function () {
                 //~_onFirstLoad//~
-/**
- * audioMotion-analyzer fluid layout demo
- *
- * https://github.com/hvianna/audioMotion-analyzer
- */
-
-
-const audioEl = document.getElementById('audio'),
-	  presetSelection = document.getElementById('presets');
+var tmpAudioEl = ThisApp.getByAttr$({appuse:'audioMotionAudio'});
+var audioEl = document.getElementById('audio');
+if( tmpAudioEl.length > 0 ){
+  audioEl = tmpAudioEl.get(0);
+}
 
 var defaultOptions = {
 			mode         : 6,
 			fftSize      : 8192,
 			minFreq      : 20,
 			maxFreq      : 22000,
-			smoothing    : 0.8,
+			smoothing    : 0.65,
 			gradient     : 'prism',
 			minDecibels  : -85,
 			maxDecibels  : -25,
@@ -107,15 +103,14 @@ var defaultOptions = {
 		};
 		
 // Visualization presets
-const presets = [
+var presets = 
 	{
-		name: 'Defaults',
-		options: defaultOptions
-	},
-	{
-		name: 'Classic LEDs',
-		options: {
-			mode: 3,
+		'Defaults':
+		defaultOptions
+	,
+		'Classic LEDs':
+		{
+			rem_mode: 3,
 			barSpace: .4,
 			gradient: 'classic',
 			lumiBars: false,
@@ -125,25 +120,25 @@ const presets = [
 			showLeds: true,
 			showPeaks: true
 		}
-	},
-	{
-		name: 'Mirror wave',
-		options: {
-			mode: 10,
+	,
+		'Mirror wave':
+		{
+			rem_mode: 10,
 			fillAlpha: .6,
 			gradient: 'rainbow',
 			lineWidth: 2,
+			showBgColor: true,
 			radial: false,
 			reflexAlpha: 1,
 			reflexBright: 1,
 			reflexRatio: .5,
 			showPeaks: false
 		}
-	},
-	{
-		name: 'Radial overlay',
-		options: {
-			mode: 5,
+	,
+	
+		'Radial overlay':
+		{
+			rem_mode: 5,
 			barSpace: .1,
 			gradient: 'prism',
 			radial: true,
@@ -153,11 +148,10 @@ const presets = [
 			spinSpeed: 1,
 			overlay: true
 		}
-	},
-	{
-		name: 'Reflex Bars',
-		options: {
-			mode: 5,
+	,
+		'Reflex Bars':
+		{
+			rem_mode: 5,
 			barSpace: .25,
 			gradient: 'rainbow',
 			lumiBars: false,
@@ -171,31 +165,32 @@ const presets = [
 			showPeaks: true,
 			overlay: false
 		}
-	}
-];
+	};
 
 // Demo-specific features
-const features = {
+var features = {
 	showLogo: true,
 	energyMeter: false,
-	songProgress: false
-}
+	songProgress: true
+};
 
-// Create audioMotion-analyzer object
 
 try {
-	var audioMotion = new AudioMotionAnalyzer(
-		document.getElementById('container'),
-		{
-			source: audioEl, // main audio source is the HTML <audio> element
-			onCanvasDraw: drawCallback, // callback function used to add custom features for this demo
-			onCanvasResize: ( reason, instance ) => {
-				console.log( `[${reason}] canvas size is: ${instance.canvas.width} x ${instance.canvas.height}` );
-				if ( reason != 'create' )
-					updateUI();
-			}
-		}
-	);
+  var tmpAMEl = ThisApp.getByAttr$({appuse:'audioMotion'});
+  if( tmpAMEl && tmpAMEl.length > 0){
+    var tmpAMSetup = {
+  			source: audioEl, // main audio source is the HTML <audio> element
+  			onCanvasDraw: drawCallback, // callback function used to add custom features for this demo
+  			onCanvasResize: ( reason, instance ) => {
+  				if ( reason != 'create' ){
+  				  //--- do something on create
+  				}
+  			}
+  		};
+    var audioMotion = new AudioMotionAnalyzer(
+		tmpAMEl.get(0), tmpAMSetup);  
+  }
+	
 }
 catch( err ) {
 	//document.getElementById('container').innerHTML = `<p>audioMotion-analyzer failed with error: <em>${err}</em></p>`;
@@ -249,37 +244,6 @@ document.querySelectorAll('input[type="range"]').forEach( el => el.addEventListe
 
 // Populate the UI presets select element
 
-presets.forEach( ( preset, index ) => {
-	const option = new Option( preset.name, index );
-	presetSelection.append( option );
-});
-
-presetSelection.addEventListener( 'change', () => {
-	audioMotion.setOptions( presets[ presetSelection.value ].options );
-	updateUI();
-});
-
-// Test tones playback
-
-document.querySelectorAll('#wave, #note, #frequency').forEach( el => {
-	el.addEventListener( 'input', () => {
-		if ( el.id == 'frequency' )
-			document.getElementById('note').selectedIndex = 0;
-		document.getElementById('btn_play').dispatchEvent( new Event('click') );
-	});
-});
-
-document.getElementById('btn_play').addEventListener( 'click', () => {
-	oscillator.type = document.getElementById('wave').value;
-	oscillator.frequency.setValueAtTime( document.getElementById('note').value || document.getElementById('frequency').value, audioCtx.currentTime );
-	gainNode.gain.setValueAtTime( .2, audioCtx.currentTime );
-});
-
-document.getElementById('btn_soundoff').addEventListener( 'click', () => gainNode.gain.setValueAtTime( 0, audioCtx.currentTime ) );
-
-// Stereo pan for test tones
-document.getElementById('pan').addEventListener( 'change', e => panNode.pan.setValueAtTime( e.target.value, audioCtx.currentTime ) );
-
 // File upload
 document.getElementById('uploadFile').addEventListener( 'change', e => loadSong( e.target ) );
 
@@ -305,10 +269,10 @@ function updateRangeElement( el ) {
 
 // Update UI elements to reflect the analyzer's current settings
 function updateUI() {
-	document.querySelectorAll('[data-setting]').forEach( el => el.value = audioMotion[ el.dataset.setting ] );
-	document.querySelectorAll('input[type="range"]').forEach( el => updateRangeElement( el ) );
-	document.querySelectorAll('button[data-prop]').forEach( el => el.classList.toggle( 'active', audioMotion[ el.dataset.prop ] ) );
-	document.querySelectorAll('button[data-feature]').forEach( el => el.classList.toggle( 'active', features[ el.dataset.feature ] ) );
+// 	document.querySelectorAll('[data-setting]').forEach( el => el.value = audioMotion[ el.dataset.setting ] );
+// 	document.querySelectorAll('input[type="range"]').forEach( el => updateRangeElement( el ) );
+// 	document.querySelectorAll('button[data-prop]').forEach( el => el.classList.toggle( 'active', audioMotion[ el.dataset.prop ] ) );
+// 	document.querySelectorAll('button[data-feature]').forEach( el => el.classList.toggle( 'active', features[ el.dataset.feature ] ) );
 }
 
 // Callback function used to add custom features for this demo
@@ -357,8 +321,11 @@ function drawCallback() {
 
 }
 
-audioMotion.setOptions( defaultOptions );
-updateUI();
+audioMotion.presets = presets;
+audioMotion.setOptions( presets['Defaults'] );
+
+
+window.audioMotion = audioMotion;
 //~_onFirstLoad~//~
                 ThisPage._onActivate();
             }
